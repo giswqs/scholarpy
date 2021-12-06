@@ -1,5 +1,8 @@
 """Top-level package for scholarpy."""
 
 __author__ = """Qiusheng Wu"""
-__email__ = 'giswqs@gmail.com'
-__version__ = '0.0.1'
+__email__ = "giswqs@gmail.com"
+__version__ = "0.0.1"
+
+
+from .scholarpy import *

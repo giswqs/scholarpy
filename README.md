@@ -1,15 +1,11 @@
 # scholarpy
 
-
 [![image](https://img.shields.io/pypi/v/scholarpy.svg)](https://pypi.python.org/pypi/scholarpy)
 
-
-**A python package for searching journal publications and researchers**
-
+**A Python package for searching journal publications and researchers**
 
 -   Free software: MIT license
 -   Documentation: https://giswqs.github.io/scholarpy
-    
 
 ## Features
 
