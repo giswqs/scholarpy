@@ -20,10 +20,19 @@ class Dsl(dimcli.Dsl):
 
         super().__init__(**kwargs)
 
-    def search_researcher_by_id(self, id, limit=1000):
+    def search_researcher_by_id(self, id, limit=1000, return_df=True):
         """Search a researcher by ID. For example, ur.010551261751.12"""
-        query = f'search researchers where id="{id}" return researchers limit {limit}'
-        return self.query(query)
+        # query = f'search researchers where id="{id}" return researchers[id+first_name+last_name+current_research_org+research_orgs+total_grants+total_publications+first_publication_year+last_publication_year+orcid_id+dimensions_url] limit {limit}'
+        query = f'search researchers where id="{id}" return researchers[basics+extras] limit {limit}'
+        result = self.query(query)
+        if return_df:
+            df2 = result.as_dataframe().transpose()
+            df3 = pd.DataFrame(
+                {"index": df2.index.tolist(), "value": df2.values.tolist()}
+            )
+            return df3
+        else:
+            return self.query(query)
 
     def search_researcher_by_name(self, name, limit=1000):
         """Search a researcher by name."""
@@ -86,7 +95,7 @@ class Dsl(dimcli.Dsl):
         query = f'search organizations for "\\"{name}\\"" return organizations limit {limit}'
         return self.query(query)
 
-    def get_pubs_by_researcher_id(self, id, limit=1000, authors=False):
+    def get_pubs_by_researcher_id(self, id, limit=1000, extra=False):
         """Search a publication by researcher ID. For example, ur.010551261751.12
 
         Args:
@@ -96,7 +105,10 @@ class Dsl(dimcli.Dsl):
         Returns:
             [type]: [description]
         """
-        query = f'search publications where researchers.id="{id}" return publications limit {limit}'
+        extra_str = ""
+        if extra:
+            extra_str = "[basics+authors_count+times_cited]"
+        query = f'search publications where researchers.id="{id}" return publications{extra_str} limit {limit}'
         return self.query(query)
 
     def get_pubs_by_journal_id(self, id, limit=1000):
@@ -184,10 +196,11 @@ class Dsl(dimcli.Dsl):
         result = self.get_pubs_by_researcher_id(id, limit)
         pubs = result.as_dataframe()
         df = pubs[col].value_counts().sort_index()
+        df2 = pd.DataFrame({"year": df.index, "citations": df.values})
         if return_plot:
             return df.plot.bar(**kwargs)
         else:
-            return df
+            return df2
 
     def researcher_pubs_authors(self, id, limit=1000):
         """Return researcher publications authors.
