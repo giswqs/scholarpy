@@ -245,3 +245,54 @@ class Dsl(dimcli.Dsl):
             raise ValueError(f"scope must be one of {allowed_scopes}")
         query = f'search publications in {scope} for "\\"{keyword}\\"" return publications[id+journal+type+title+authors+year+volume+issue+pages+doi+dimensions_url+times_cited] sort by {sorted_key} limit {limit}'
         return self.query(query)
+
+    def researcher_annual_stats(self, data):
+
+        pubs = data.as_dataframe()
+        years_dict = pubs[["id", "year"]].set_index("id").to_dict()["year"]
+        df = data.as_dataframe_authors()
+        df["name"] = df["first_name"] + " " + df["last_name"]
+        affiliations = df["affiliations"].values.tolist()
+
+        institutions = []
+        cities = []
+        years = []
+
+        ids = df["pub_id"].values.tolist()
+        for index, a in enumerate(affiliations):
+            try:
+                institution = a[0]["name"]
+                institutions.append(institution)
+            except:
+                institutions.append("")
+
+            try:
+                city = a[0]["city_id"]
+                cities.append(city)
+            except:
+                cities.append(0)
+            years.append((years_dict[ids[index]]))
+
+        df["institution"] = institutions
+        df["city_id"] = cities
+        df["year"] = years
+
+        pubs_stats = pubs.groupby("year").size()
+        collaborators_stats = (
+            df.groupby(["year", "name"]).size().groupby(level=0).size()
+        )
+        institutions_stats = (
+            df.groupby(["year", "institution"]).size().groupby(level=0).size()
+        )
+        cities_stats = df.groupby(["year", "city_id"]).size().groupby(level=0).size()
+
+        df2 = pd.DataFrame(
+            {
+                "year": cities_stats.index,
+                "pubs": pubs_stats,
+                "collaborators": collaborators_stats,
+                "institutions": institutions_stats,
+                "cities": cities_stats,
+            }
+        )
+        return df2
