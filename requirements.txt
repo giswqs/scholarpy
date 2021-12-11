@@ -1,3 +1,4 @@
 dimcli
 leafmap
+plotly
 scholarly

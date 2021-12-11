@@ -4,6 +4,7 @@ import os
 import dimcli
 import webbrowser
 import pandas as pd
+import plotly.express as px
 
 
 class Dsl(dimcli.Dsl):
@@ -392,11 +393,29 @@ def geoname_latlon(id, df=None):
 def collaborator_locations(df):
 
     if "name" in df.columns:
-        df = df.drop(columns=["name"], axis=1)
+        df.drop(columns=["name"], axis=1, inplace=True)
 
     if "year" in df.columns:
-        df = df.drop(columns=["year"], axis=1)
+        df.drop(columns=["year"], axis=1, inplace=True)
+
+    if "index" in df.columns:
+        df.drop(columns=["index"], axis=1, inplace=True)
 
     df.drop_duplicates(inplace=True)
+    df = df[df["latitude"] != 0].reset_index()
+    df.drop(columns=["index"], axis=1, inplace=True)
 
-    return df[df["latitude"] != 0].reset_index()
+    return df
+
+
+def annual_stats_barplot(df, columns=None, **kwargs):
+
+    if columns is None:
+        columns = ["pubs", "collaborators", "institutions", "cities"]
+    fig = px.bar(
+        df,
+        x="year",
+        y=columns,
+        barmode="group",
+    )
+    return fig
