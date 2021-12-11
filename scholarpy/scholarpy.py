@@ -220,7 +220,12 @@ class Dsl(dimcli.Dsl):
         return df
 
     def search_pubs_by_keyword(
-        self, keyword, scope="title_abstract_only", sorted_key="times_cited", limit=1000
+        self,
+        keyword,
+        scope="title_abstract_only",
+        sorted_key="times_cited",
+        limit=1000,
+        geonames_df=None,
     ):
         """Search publications by keyword.
 
@@ -246,7 +251,7 @@ class Dsl(dimcli.Dsl):
         query = f'search publications in {scope} for "\\"{keyword}\\"" return publications[id+journal+type+title+authors+year+volume+issue+pages+doi+dimensions_url+times_cited] sort by {sorted_key} limit {limit}'
         return self.query(query)
 
-    def researcher_annual_stats(self, data):
+    def researcher_annual_stats(self, data, geonames_df=None):
 
         pubs = data.as_dataframe()
         years_dict = pubs[["id", "year"]].set_index("id").to_dict()["year"]
@@ -255,8 +260,12 @@ class Dsl(dimcli.Dsl):
         affiliations = df["affiliations"].values.tolist()
 
         institutions = []
-        cities = []
+        city_ids = []
         years = []
+        cities = []
+        countries = []
+        latitudes = []
+        longitudes = []
 
         ids = df["pub_id"].values.tolist()
         for index, a in enumerate(affiliations):
@@ -267,15 +276,43 @@ class Dsl(dimcli.Dsl):
                 institutions.append("")
 
             try:
-                city = a[0]["city_id"]
+                city_id = a[0]["city_id"]
+                city_ids.append(city_id)
+            except:
+                city_ids.append(0)
+
+            try:
+                city = a[0]["city"]
                 cities.append(city)
             except:
-                cities.append(0)
+                cities.append("")
+
+            try:
+                country = a[0]["country"]
+                countries.append(country)
+            except:
+                countries.append("")
+
+            if geonames_df is not None:
+                try:
+                    latitude, longitude = geoname_latlon(city_ids[-1], geonames_df)
+                    latitudes.append(latitude)
+                    longitudes.append(longitude)
+                except:
+                    latitudes.append(0)
+                    longitudes.append(0)
+
             years.append((years_dict[ids[index]]))
 
-        df["institution"] = institutions
-        df["city_id"] = cities
         df["year"] = years
+        df["institution"] = institutions
+        df["city"] = cities
+        df["country"] = countries
+        df["city_id"] = city_ids
+
+        if geonames_df is not None:
+            df["latitude"] = latitudes
+            df["longitude"] = longitudes
 
         pubs_stats = pubs.groupby("year").size()
         collaborators_stats = (
@@ -295,4 +332,71 @@ class Dsl(dimcli.Dsl):
                 "cities": cities_stats,
             }
         )
-        return df2
+        if geonames_df is None:
+            return df2
+        else:
+            return (
+                df2,
+                df[
+                    [
+                        "name",
+                        "year",
+                        "institution",
+                        "city",
+                        "country",
+                        "latitude",
+                        "longitude",
+                    ]
+                ],
+            )
+
+
+def get_geonames(**kwargs):
+
+    url = "https://raw.githubusercontent.com/giswqs/data/main/world/cities5000.csv"
+    # columns = ['geonameid', 'name', 'asciiname', 'alternatenames', 'latitude', 'longitude', 'feature_class', 'feature_code', 'country_code',
+    #            'cc2', 'admin1_code', 'admin2_code', 'admin3_code', 'admin4_code', 'population', 'elevation', 'dem', 'timezone', 'modification_date']
+    df = pd.read_csv(url, sep="\t", encoding="utf-8")
+
+    if "columns" in kwargs and isinstance(kwargs["columns"], list):
+        df = df[kwargs["columns"]]
+    else:
+        df = df[
+            ["geonameid", "name", "country_code", "population", "latitude", "longitude"]
+        ]
+
+    return df
+
+
+def geoname_latlon(id, df=None):
+
+    if not isinstance(id, int):
+        try:
+            id = int(id)
+        except:
+            raise ValueError("id must be an integer")
+
+    if df is None:
+        df = get_geonames()
+
+    row = df[df["geonameid"] == id]
+    lat = 0
+    lon = 0
+    if not row.empty:
+        lat = row.iloc[0]["latitude"]
+        lon = row.iloc[0]["longitude"]
+
+    return lat, lon
+
+
+def collaborator_locations(df):
+
+    if "name" in df.columns:
+        df = df.drop(columns=["name"], axis=1)
+
+    if "year" in df.columns:
+        df = df.drop(columns=["year"], axis=1)
+
+    df.drop_duplicates(inplace=True)
+
+    return df[df["latitude"] != 0].reset_index()
