@@ -2,6 +2,7 @@
 
 import os
 import dimcli
+import leafmap
 import webbrowser
 import pandas as pd
 import plotly.express as px
@@ -242,18 +243,18 @@ class Dsl(dimcli.Dsl):
         df = pubs.join(df2.set_index("id"), on="id")
         return df
 
-    def search_pubs_by_keyword(
+    def search_pubs_by_keywords(
         self,
-        keyword,
+        keywords,
         scope="title_abstract_only",
+        fields=None,
         sorted_key="times_cited",
         limit=1000,
-        geonames_df=None,
     ):
         """Search publications by keyword.
 
         Args:
-            keyword (str): The keyword to search.
+            keywords (str): The keyword to search.
             scope (str, optional): The scope of the search. Can be one of ["authors", "concepts", "full_data", "full_data_exact", "title_abstract_only", "title_only"]. Defaults to "title_abstract_only".
             limit (int, optional): The number of results to return. Defaults to 1000.
 
@@ -269,9 +270,13 @@ class Dsl(dimcli.Dsl):
             "title_abstract_only",
             "title_only",
         ]
+
+        if fields is None:
+            fields = "basics+altmetric+times_cited+field_citation_ratio+authors_count+doi+dimensions_url"
+
         if scope not in allowed_scopes:
             raise ValueError(f"scope must be one of {allowed_scopes}")
-        query = f'search publications in {scope} for "\\"{keyword}\\"" return publications[id+journal+type+title+authors+year+volume+issue+pages+doi+dimensions_url+times_cited] sort by {sorted_key} limit {limit}'
+        query = f'search publications in {scope} for "\\"{keywords}\\"" return publications[{fields}] sort by {sorted_key} limit {limit}'
         return self.query(query)
 
     def researcher_annual_stats(self, data, geonames_df=None):
@@ -441,3 +446,18 @@ def annual_stats_barplot(df, columns=None, **kwargs):
         barmode="group",
     )
     return fig
+
+
+def json_to_df(json_data, transpose=False):
+    df = json_data.as_dataframe()
+    if not df.empty:
+        if transpose:
+            df = df.transpose()
+
+        out_csv = leafmap.temp_file_path(".csv")
+        df.to_csv(out_csv, index=transpose)
+        df = pd.read_csv(out_csv)
+        os.remove(out_csv)
+        return df
+    else:
+        return None
