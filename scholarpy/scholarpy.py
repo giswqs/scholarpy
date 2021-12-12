@@ -35,12 +35,34 @@ class Dsl(dimcli.Dsl):
         else:
             return self.query(query)
 
-    def search_researcher_by_name(self, name, limit=1000):
+    def search_researcher_by_name(self, name, limit=1000, return_list=False):
         """Search a researcher by name."""
-        query = (
-            f'search researchers for "\\"{name}\\"" return researchers limit {limit}'
-        )
-        return self.query(query)
+        query = f'search researchers for "\\"{name}\\"" return researchers[basics+extras+obsolete] limit {limit}'
+        result = self.query(query)
+        if return_list:
+            df = result.as_dataframe()
+            if not df.empty:
+                df = df[df["obsolete"] == 0]
+                df["current_research_org_name"] = df["current_research_org.name"]
+                if not df.empty:
+                    items = []
+                    for row in df.itertuples():
+                        item = (
+                            str(row.first_name)
+                            + " "
+                            + str(row.last_name)
+                            + " | "
+                            + str(row.id)
+                            + " | "
+                            + str(row.current_research_org_name)
+                        )
+                        items.append(item)
+
+                    return result, items
+            else:
+                return result, None
+        else:
+            return result
 
     def search_journal_by_id(self, id, limit=1000):
         """Search a journal by ID.
