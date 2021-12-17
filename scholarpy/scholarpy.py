@@ -131,11 +131,11 @@ class Dsl(dimcli.Dsl):
         """
         extra_str = ""
         if extra:
-            extra_str = "[basics+authors_count+times_cited]"
+            extra_str = "[basics+authors_count+times_cited+dimensions_url]"
         query = f'search publications where researchers.id="{id}" return publications{extra_str} limit {limit}'
         return self.query(query)
 
-    def get_pubs_by_journal_id(self, id, limit=1000):
+    def get_pubs_by_journal_id(self, id, start_year=None, end_year=None, limit=1000):
         """Search a publication by journal ID. For example, jour.1018957
 
         Args:
@@ -145,7 +145,15 @@ class Dsl(dimcli.Dsl):
         Returns:
             [type]: [description]
         """
-        query = f'search publications where journal.id="{id}" return publications limit {limit}'
+        if (start_year is not None) and (end_year is not None):
+            query = f'search publications where journal.id="{id}" and year>={start_year} and year<={end_year} return publications limit {limit}'
+        elif start_year is not None:
+            query = f'search publications where journal.id="{id}" and year>={start_year} return publications limit {limit}'
+        elif end_year is not None:
+            query = f'search publications where journal.id="{id}" and year<={end_year} return publications limit {limit}'
+        else:
+            query = f'search publications where journal.id="{id}" return publications limit {limit}'
+        # query = f'search publications where journal.id="{id}" return publications limit {limit}'
         return self.query(query)
 
     def get_pubs_by_organization_id(
