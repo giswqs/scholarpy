@@ -369,6 +369,7 @@ class Dsl(dimcli.Dsl):
     def search_pubs_by_keyword(
         self,
         keyword,
+        exact_match=True,
         scope="title_abstract_only",
         start_year=None,
         end_year=None,
@@ -382,6 +383,7 @@ class Dsl(dimcli.Dsl):
 
         Args:
             keyword (str): The keyword to search.
+            exact_match (bool, optional): If True, the keyword will be matched exactly. Defaults to True.
             scope (str, optional): The scope of the search. Defaults to "title_abstract_only".
             start_year (int, optional): The start year of the publication. Defaults to None.
             end_year (int, optional): The end year of the publication. Defaults to None.
@@ -396,6 +398,10 @@ class Dsl(dimcli.Dsl):
         Returns:
             dimcli.DslDataset: JSON data of the results.
         """
+        if exact_match:
+            exact = '\\"'
+        else:
+            exact = ""
 
         allowed_scopes = [
             "authors",
@@ -413,14 +419,15 @@ class Dsl(dimcli.Dsl):
             fields = "[basics+altmetric+times_cited+field_citation_ratio+authors_count+doi+dimensions_url]"
 
         if (start_year is not None) and (end_year is not None):
-            query = f'search publications in {scope} for "\\"{keyword}\\"" where year>={start_year} and year<={end_year} return publications{fields} sort by {sorted_field}'
+            query = f'search publications in {scope} for "{exact}{keyword}{exact}" where year>={start_year} and year<={end_year} return publications{fields} sort by {sorted_field}'
         elif start_year is not None:
-            query = f'search publications in {scope} for "\\"{keyword}\\"" where year>={start_year} return publications{fields} sort by {sorted_field}'
+            query = f'search publications in {scope} for "{exact}{keyword}{exact}" where year>={start_year} return publications{fields} sort by {sorted_field}'
         elif end_year is not None:
-            query = f'search publications in {scope} for "\\"{keyword}\\"" where year<={end_year} return publications{fields} sort by {sorted_field}'
+            query = f'search publications in {scope} for "{exact}{keyword}{exact}" where year<={end_year} return publications{fields} sort by {sorted_field}'
         else:
-            query = f'search publications in {scope} for "\\"{keyword}\\"" return publications{fields} sort by {sorted_field}'
+            query = f'search publications in {scope} for "{exact}{keyword}{exact}" return publications{fields} sort by {sorted_field}'
 
+        print(query)
         if iterative:
             result = self.query_iterative(query, limit=limit)
         else:
@@ -432,6 +439,7 @@ class Dsl(dimcli.Dsl):
     def search_grants_by_keyword(
         self,
         keyword,
+        exact_match=True,
         scope="title_only",
         start_year=None,
         end_year=None,
@@ -441,6 +449,12 @@ class Dsl(dimcli.Dsl):
         limit=1000,
         **kwargs,
     ):
+
+        if exact_match:
+            exact = '\\"'
+        else:
+            exact = ""
+
         allowed_scopes = [
             "concepts",
             "full_data",
@@ -463,13 +477,13 @@ class Dsl(dimcli.Dsl):
                 end_year = str(end_year) + "-12-31"
 
         if (start_year is not None) and (end_year is not None):
-            query = f'search grants in {scope} for "\\"{keyword}\\"" where start_year>={start_year} and end_date<="{end_year}" return grants{fields} sort by {sorted_field}'
+            query = f'search grants in {scope} for "{exact}{keyword}{exact}" where start_year>={start_year} and end_date<="{end_year}" return grants{fields} sort by {sorted_field}'
         elif start_year is not None:
-            query = f'search grants in {scope} for "\\"{keyword}\\"" where start_year>={start_year} return grants{fields} sort by {sorted_field}'
+            query = f'search grants in {scope} for "{exact}{keyword}{exact}" where start_year>={start_year} return grants{fields} sort by {sorted_field}'
         elif end_year is not None:
-            query = f'search grants in {scope} for "\\"{keyword}\\"" where end_date<="{end_year}" return grants{fields} sort by {sorted_field}'
+            query = f'search grants in {scope} for "{exact}{keyword}{exact}" where end_date<="{end_year}" return grants{fields} sort by {sorted_field}'
         else:
-            query = f'search grants in {scope} for "\\"{keyword}\\"" return grants{fields} sort by {sorted_field}'
+            query = f'search grants in {scope} for "{exact}{keyword}{exact}" return grants{fields} sort by {sorted_field}'
 
         if iterative:
             result = self.query_iterative(query, limit=limit)
