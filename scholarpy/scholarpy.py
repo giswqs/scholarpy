@@ -410,16 +410,66 @@ class Dsl(dimcli.Dsl):
             raise ValueError(f"scope must be one of {allowed_scopes}")
 
         if fields is None:
-            fields = "basics+altmetric+times_cited+field_citation_ratio+authors_count+doi+dimensions_url"
+            fields = "[basics+altmetric+times_cited+field_citation_ratio+authors_count+doi+dimensions_url]"
 
         if (start_year is not None) and (end_year is not None):
-            query = f'search publications in {scope} for "\\"{keyword}\\"" where year>={start_year} and year<={end_year} return publications[{fields}] sort by {sorted_field}'
+            query = f'search publications in {scope} for "\\"{keyword}\\"" where year>={start_year} and year<={end_year} return publications{fields} sort by {sorted_field}'
         elif start_year is not None:
-            query = f'search publications in {scope} for "\\"{keyword}\\"" where year>={start_year} return publications[{fields}] sort by {sorted_field}'
+            query = f'search publications in {scope} for "\\"{keyword}\\"" where year>={start_year} return publications{fields} sort by {sorted_field}'
         elif end_year is not None:
-            query = f'search publications in {scope} for "\\"{keyword}\\"" where year<={end_year} return publications[{fields}] sort by {sorted_field}'
+            query = f'search publications in {scope} for "\\"{keyword}\\"" where year<={end_year} return publications{fields} sort by {sorted_field}'
         else:
-            query = f'search publications in {scope} for "\\"{keyword}\\"" return publications[{fields}] sort by {sorted_field}'
+            query = f'search publications in {scope} for "\\"{keyword}\\"" return publications{fields} sort by {sorted_field}'
+
+        if iterative:
+            result = self.query_iterative(query, limit=limit)
+        else:
+            query = f"{query} limit {limit}"
+            result = self.query(query)
+
+        return result
+
+    def search_grants_by_keyword(
+        self,
+        keyword,
+        scope="title_only",
+        start_year=None,
+        end_year=None,
+        fields=None,
+        sorted_field="start_year",
+        iterative=False,
+        limit=1000,
+        **kwargs,
+    ):
+        allowed_scopes = [
+            "concepts",
+            "full_data",
+            "investigators",
+            "title_abstract_only",
+            "title_only",
+        ]
+
+        if scope not in allowed_scopes:
+            raise ValueError(f"scope must be one of {allowed_scopes}")
+
+        if fields is None:
+            fields = "[basics+extras+dimensions_url]"
+
+        if end_year is not None:
+            end_year = str(end_year)
+            if len(str(end_year)) != 4:
+                raise ValueError("end_year must be a 4-digit number")
+            else:
+                end_year = str(end_year) + "-12-31"
+
+        if (start_year is not None) and (end_year is not None):
+            query = f'search grants in {scope} for "\\"{keyword}\\"" where start_year>={start_year} and end_date<="{end_year}" return grants{fields} sort by {sorted_field}'
+        elif start_year is not None:
+            query = f'search grants in {scope} for "\\"{keyword}\\"" where start_year>={start_year} return grants{fields} sort by {sorted_field}'
+        elif end_year is not None:
+            query = f'search grants in {scope} for "\\"{keyword}\\"" where end_date<="{end_year}" return grants{fields} sort by {sorted_field}'
+        else:
+            query = f'search grants in {scope} for "\\"{keyword}\\"" return grants{fields} sort by {sorted_field}'
 
         if iterative:
             result = self.query_iterative(query, limit=limit)
