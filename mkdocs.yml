@@ -48,4 +48,5 @@ nav:
     - FAQ: faq.md
     - Report Issues: https://github.com/giswqs/scholarpy/issues
     - API Reference:
+          - common module: common.md
           - scholarpy module: scholarpy.md
