@@ -89,9 +89,9 @@ class Dsl(dimcli.Dsl):
         """
 
         if fields is None:
-            fields = "[basics+extras+obsolete]"
+            fields = "[basics+extras]"
 
-        query = f'search researchers for "\\"{name}\\"" return researchers{fields}'
+        query = f'search researchers for "\\"{name}\\"" where obsolete=0 return researchers{fields}'
         if iterative:
             result = self.query_iterative(query, limit=limit)
         else:
@@ -101,7 +101,6 @@ class Dsl(dimcli.Dsl):
         if return_list:
             df = result.as_dataframe()
             if not df.empty:
-                df = df[df["obsolete"] == 0]
                 df["current_research_org_name"] = df["current_research_org.name"]
                 if not df.empty:
                     items = []
@@ -122,6 +121,55 @@ class Dsl(dimcli.Dsl):
                 return result, None
         else:
             return result
+
+    def search_orcid_by_name(
+        self,
+        name,
+        fields=None,
+        iterative=False,
+        limit=1000,
+        return_list=False,
+        **kwargs,
+    ):
+        """Search a researcher orcid by name.
+
+        Args:
+            name (str): The name of the researcher.
+            fields (str, optional): The fields to return. For example, [basics+extras]. Defaults to None.
+            iterative (bool, optional): If True, the query will be iterative. Defaults to False.
+            limit (int, optional): The number of results to return. Defaults to 1000.
+            return_list (bool, optional): If True, the results will be returned as a list. Defaults to False.
+
+        Returns:
+            pd.DataFrame: A dataframe of the results.
+        """
+
+        result = self.search_researcher_by_name(
+            name, fields=fields, iterative=iterative, limit=limit, return_list=False
+        )
+        df = result.as_dataframe()
+        if "orcid_id" in df.columns:
+            df = df[~df["orcid_id"].isnull()]
+            ids = [id[0] for id in df["orcid_id"].values.tolist()]
+            df["orcid_id"] = ids
+            df.sort_values(by=["orcid_id"], inplace=True)
+
+            if return_list:
+                df["uid"] = (
+                    df["first_name"]
+                    + " "
+                    + df["last_name"]
+                    + " | "
+                    + df["orcid_id"]
+                    + " | "
+                    + df["current_research_org.name"]
+                )
+                df = df[~df["uid"].isnull()]
+                return df["uid"].tolist()
+            else:
+                return df
+        else:
+            return None
 
     def search_journal_by_id(self, id, fields=None, **kwargs):
         """Search a journal by ID.
@@ -427,7 +475,6 @@ class Dsl(dimcli.Dsl):
         else:
             query = f'search publications in {scope} for "{exact}{keyword}{exact}" return publications{fields} sort by {sorted_field}'
 
-        print(query)
         if iterative:
             result = self.query_iterative(query, limit=limit)
         else:
