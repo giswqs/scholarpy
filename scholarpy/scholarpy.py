@@ -101,6 +101,7 @@ class Dsl(dimcli.Dsl):
         if return_list:
             df = result.as_dataframe()
             if not df.empty:
+                df.sort_values(by=["id"], inplace=True)
                 df["current_research_org_name"] = df["current_research_org.name"]
                 if not df.empty:
                     items = []

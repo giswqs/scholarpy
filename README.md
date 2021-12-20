@@ -6,7 +6,7 @@
 **A Python package for searching journal publications and researchers**
 
 -   Free software: MIT license
--   Documentation: https://giswqs.github.io/scholarpy
+-   Documentation: https://scholarpy.gishub.org
 
 ## Features
 
