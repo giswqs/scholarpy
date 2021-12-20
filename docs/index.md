@@ -1,6 +1,7 @@
 # Welcome to scholarpy
 
 [![image](https://img.shields.io/pypi/v/scholarpy.svg)](https://pypi.python.org/pypi/scholarpy)
+[![image](https://img.shields.io/conda/vn/conda-forge/scholarpy.svg)](https://anaconda.org/conda-forge/scholarpy)
 
 **A python package for searching journal publications and researchers**
 
