@@ -422,6 +422,7 @@ class Dsl(dimcli.Dsl):
         scope="title_abstract_only",
         start_year=None,
         end_year=None,
+        journal_id=None,
         fields=None,
         sorted_field="times_cited",
         iterative=False,
@@ -452,6 +453,11 @@ class Dsl(dimcli.Dsl):
         else:
             exact = ""
 
+        if journal_id is not None:
+            journal = f'and journal.id="{journal_id}"'
+        else:
+            journal = ""
+
         allowed_scopes = [
             "authors",
             "concepts",
@@ -468,14 +474,19 @@ class Dsl(dimcli.Dsl):
             fields = "[basics+altmetric+times_cited+field_citation_ratio+authors_count+doi+dimensions_url]"
 
         if (start_year is not None) and (end_year is not None):
-            query = f'search publications in {scope} for "{exact}{keyword}{exact}" where year>={start_year} and year<={end_year} return publications{fields} sort by {sorted_field}'
+            query = f'search publications in {scope} for "{exact}{keyword}{exact}" where year>={start_year} and year<={end_year} {journal} return publications{fields} sort by {sorted_field}'
         elif start_year is not None:
-            query = f'search publications in {scope} for "{exact}{keyword}{exact}" where year>={start_year} return publications{fields} sort by {sorted_field}'
+            query = f'search publications in {scope} for "{exact}{keyword}{exact}" where year>={start_year} {journal} return publications{fields} sort by {sorted_field}'
         elif end_year is not None:
-            query = f'search publications in {scope} for "{exact}{keyword}{exact}" where year<={end_year} return publications{fields} sort by {sorted_field}'
+            query = f'search publications in {scope} for "{exact}{keyword}{exact}" where year<={end_year} {journal} return publications{fields} sort by {sorted_field}'
         else:
-            query = f'search publications in {scope} for "{exact}{keyword}{exact}" return publications{fields} sort by {sorted_field}'
+            if journal_id is not None:
+                journal = f'where journal.id="{journal_id}"'
+            else:
+                journal = ""
+            query = f'search publications in {scope} for "{exact}{keyword}{exact}" {journal} return publications{fields} sort by {sorted_field}'
 
+        print(query)
         if iterative:
             result = self.query_iterative(query, limit=limit)
         else:
