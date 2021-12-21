@@ -486,7 +486,6 @@ class Dsl(dimcli.Dsl):
                 journal = ""
             query = f'search publications in {scope} for "{exact}{keyword}{exact}" {journal} return publications{fields} sort by {sorted_field}'
 
-        print(query)
         if iterative:
             result = self.query_iterative(query, limit=limit)
         else:
