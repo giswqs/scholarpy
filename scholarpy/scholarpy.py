@@ -91,7 +91,7 @@ class Dsl(dimcli.Dsl):
         if fields is None:
             fields = "[basics+extras]"
 
-        query = f'search researchers for "\\"{name}\\"" where obsolete=0 return researchers{fields}'
+        query = f'search researchers for "\\"{name}\\"" where obsolete=0 and total_publications>0 return researchers{fields}'
         if iterative:
             result = self.query_iterative(query, limit=limit)
         else:
