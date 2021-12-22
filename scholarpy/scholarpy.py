@@ -101,7 +101,7 @@ class Dsl(dimcli.Dsl):
         if return_list:
             df = result.as_dataframe()
             if not df.empty:
-                df.sort_values(by=["id"], inplace=True)
+                # df.sort_values(by=["id"], inplace=True)
                 df["current_research_org_name"] = df["current_research_org.name"]
                 df.sort_values("current_research_org_name", inplace=True)
                 if not df.empty:
@@ -185,8 +185,9 @@ class Dsl(dimcli.Dsl):
             df = df[~df["orcid_id"].isnull()]
             ids = [id[0] for id in df["orcid_id"].values.tolist()]
             df["orcid_id"] = ids
-            df.sort_values(by=["orcid_id"], inplace=True)
-
+            # df.sort_values(by=["orcid_id"], inplace=True)
+            df["current_research_org_name"] = df["current_research_org.name"]
+            df.sort_values("current_research_org_name", inplace=True)
             if return_list:
                 df["uid"] = (
                     df["first_name"]
