@@ -103,6 +103,7 @@ class Dsl(dimcli.Dsl):
             if not df.empty:
                 df.sort_values(by=["id"], inplace=True)
                 df["current_research_org_name"] = df["current_research_org.name"]
+                df.sort_values("current_research_org_name", inplace=True)
                 if not df.empty:
                     items = []
                     for row in df.itertuples():
@@ -122,6 +123,37 @@ class Dsl(dimcli.Dsl):
                 return result, None
         else:
             return result
+
+    def search_researcher_collaborators(self, id, pubs=None):
+        """Search collaborators of a researcher.
+
+        Args:
+            id (str): The ID of the researcher. For example, ur.010551261751.12
+            pubs (dimcli.DslDataset, optional): The publications of the researcher. Defaults to None.
+        Returns:
+            pd.DataFrame: A dataframe of the collaborators.
+        """
+        if pubs is None:
+            pubs = self.search_pubs_by_researcher_id(id)
+        df = pubs.as_dataframe_authors()
+        df = df[df["researcher_id"] != id]
+        df["Name"] = df["first_name"].str.split(" ").str[0] + " " + df["last_name"]
+        names = df.drop_duplicates("Name").copy()
+        affiliations = names["affiliations"].values.tolist()
+        institutions = []
+        for a in enumerate(affiliations):
+            try:
+                institution = a[1][0]["name"]
+                institutions.append(institution)
+            except:
+                institutions.append("")
+
+        names["Institution"] = institutions
+        names = names[["Name", "Institution"]]
+
+        result = pd.DataFrame(df["Name"].value_counts())
+        result = pd.DataFrame({"Name": result.index, "Count": result["Name"].values})
+        return result.merge(names, on="Name")
 
     def search_orcid_by_name(
         self,
