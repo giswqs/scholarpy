@@ -1,4 +1,5 @@
 dimcli
 leafmap
 plotly
+pybliometrics
 scholarly

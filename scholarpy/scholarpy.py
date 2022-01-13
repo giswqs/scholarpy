@@ -137,7 +137,8 @@ class Dsl(dimcli.Dsl):
             pubs = self.search_pubs_by_researcher_id(id)
         df = pubs.as_dataframe_authors()
         df = df[df["researcher_id"] != id]
-        df["Name"] = df["first_name"].str.split(" ").str[0] + " " + df["last_name"]
+        df["Name"] = df["first_name"].str.split(
+            " ").str[0] + " " + df["last_name"]
         names = df.drop_duplicates("Name").copy()
         affiliations = names["affiliations"].values.tolist()
         institutions = []
@@ -152,7 +153,8 @@ class Dsl(dimcli.Dsl):
         names = names[["Name", "Institution"]]
 
         result = pd.DataFrame(df["Name"].value_counts())
-        result = pd.DataFrame({"Name": result.index, "Count": result["Name"].values})
+        result = pd.DataFrame(
+            {"Name": result.index, "Count": result["Name"].values})
         return result.merge(names, on="Name")
 
     def search_orcid_by_name(
@@ -266,7 +268,7 @@ class Dsl(dimcli.Dsl):
             print("No journal can be found.")
             return None
 
-    def search_organization_by_id(self, id, fields=None, **kwargs):
+    def search_org_by_id(self, id, fields=None, **kwargs):
         """Search an organization by ID. For example, grid.411461.7
 
         Args:
@@ -281,8 +283,8 @@ class Dsl(dimcli.Dsl):
         query = f'search organizations where id="{id}" return organizations{fields}'
         return self.query(query)
 
-    def search_organization_by_name(
-        self, name, exact_match=True, fields=None, iterative=False, limit=1000, **kwargs
+    def search_org_by_name(
+        self, name, exact_match=True, fields=None, iterative=False, limit=1000, return_list=False, **kwargs
     ):
         """Search an organization by name.
 
@@ -292,6 +294,7 @@ class Dsl(dimcli.Dsl):
             fields (str, optional): The fields to return. For example, [basics+extras]. Defaults to None.
             iterative (bool, optional): If True, the query will be iterative. Defaults to False.
             limit (int, optional): The number of results to return. Defaults to 1000.
+            return_list (bool, optional): If True, the results will be returned as a list. Defaults to False.
 
         Returns:
             dimcli.DslDataset: JSON data of the results.
@@ -311,10 +314,21 @@ class Dsl(dimcli.Dsl):
                 sub_df = df[df["name"].str.lower() == name.lower()]
                 org_id = sub_df["id"].values.tolist()[0]
                 query = f'search organizations where id="{org_id}" return organizations{fields}'
-                return self.query(query)
+                result = self.query(query)
 
+            if return_list:
+
+                df = result.as_dataframe()
+                if not df.empty:
+                    df.sort_values("name", inplace=True)
+                    df["name_id"] = df["id"] + " | " + df["name"]
+                    orgs = df["name_id"].values.tolist()
+                    return orgs
+                else:
+                    return None
             else:
                 return result
+
         except Exception as e:
             print("No organization can be found.")
             return None
@@ -405,7 +419,7 @@ class Dsl(dimcli.Dsl):
 
         return result
 
-    def search_pubs_by_organization_id(
+    def search_pubs_by_org_id(
         self,
         id,
         start_year=None,
@@ -732,7 +746,8 @@ class Dsl(dimcli.Dsl):
 
             if geonames_df is not None:
                 try:
-                    latitude, longitude = geoname_latlon(city_ids[-1], geonames_df)
+                    latitude, longitude = geoname_latlon(
+                        city_ids[-1], geonames_df)
                     latitudes.append(latitude)
                     longitudes.append(longitude)
                 except:
@@ -758,7 +773,8 @@ class Dsl(dimcli.Dsl):
         institutions_stats = (
             df.groupby(["year", "institution"]).size().groupby(level=0).size()
         )
-        cities_stats = df.groupby(["year", "city_id"]).size().groupby(level=0).size()
+        cities_stats = df.groupby(
+            ["year", "city_id"]).size().groupby(level=0).size()
 
         df2 = pd.DataFrame(
             {
@@ -787,6 +803,95 @@ class Dsl(dimcli.Dsl):
                 ],
             )
 
+    def org_pubs_annual_stats(self, org_id, start_year=None, end_year=None, iterative=False, limit=1000, return_plot=False, **kwargs):
+        """Search publications by organization ID.
+
+        Args:
+            org_id (str): The ID of the organization. For example, grid.411461.7
+            start_year (int, optional): The start year of the publication. Defaults to None.
+            end_year (int, optional): The end year of the publication. Defaults to None.
+            iterative (bool, optional): If True, the query will be iterative. Defaults to False.
+            limit (int, optional): The number of results to return. Defaults to 1000.
+            return_plot (bool, optional): If True, the plot of the results will be returned. Defaults to False.
+
+        Returns:
+            dimcli.DslDataset: JSON data of the results.
+        """
+
+        if (start_year is not None) and (end_year is not None):
+            query = f'search publications where research_orgs="{org_id}" and year>={start_year} and year<={end_year} return year'
+        elif start_year is not None:
+            query = f'search publications where research_orgs="{org_id}" and year>={start_year} return year'
+        elif end_year is not None:
+            query = f'search publications where research_orgs="{org_id}" and year<={end_year} return year'
+        else:
+            query = f'search publications where research_orgs="{org_id}" return year'
+
+        if iterative:
+            result = self.query_iterative(query, limit=limit)
+        else:
+            query = f"{query} limit {limit}"
+            result = self.query(query)
+
+        df = result.as_dataframe()
+        df.rename(columns={"id": "year"}, inplace=True)
+
+        if not return_plot:
+            return df
+        else:
+            if not df.empty:
+                org_name = self.search_org_by_id(
+                    org_id).as_dataframe()["name"][0]
+                fig = px.bar(df, x="year", y="count",
+                             title=f"Publications from {org_name} - by year")
+                return df, fig
+            else:
+                return df, None
+
+    def org_grant_funders(self, org_id, start_year=None, end_year=None, iterative=False, limit=20, return_plot=False, **kwargs):
+        """Top funders of an organization.
+
+        Args:
+            org_id (str): The ID of the organization. For example, grid.411461.7
+            start_year (int, optional): The start year of the publication. Defaults to None.
+            end_year (int, optional): The end year of the publication. Defaults to None.
+            iterative (bool, optional): If True, the query will be iterative. Defaults to False.
+            limit (int, optional): The number of results to return. Defaults to 20.
+            return_plot (bool, optional): If True, the plot of the results will be returned. Defaults to False.
+
+        Returns:
+            dimcli.DslDataset: JSON data of the results.
+        """
+
+        if (start_year is not None) and (end_year is not None):
+            query = f'search grants where research_orgs="{org_id}" and year>={start_year} and year<={end_year} return funders aggregate funding sort by funding'
+        elif start_year is not None:
+            query = f'search grants where research_orgs="{org_id}" and year>={start_year} return funders aggregate funding sort by funding'
+        elif end_year is not None:
+            query = f'search grants where research_orgs="{org_id}" and year<={end_year} return funders aggregate funding sort by funding'
+        else:
+            query = f'search grants where research_orgs="{org_id}" return funders aggregate funding sort by funding'
+
+        if iterative:
+            result = self.query_iterative(query, limit=limit)
+        else:
+            query = f"{query} limit {limit}"
+            result = self.query(query)
+
+        df = result.as_dataframe()
+        if not return_plot:
+            return df
+        else:
+            if not df.empty:
+                org_name = self.search_org_by_id(
+                    org_id).as_dataframe()["name"][0]
+                fig = px.bar(df,
+                             x="name", y="funding",
+                             title=f"Funding for {org_name} - by funder")
+                return df, fig
+            else:
+                return df, None
+
 
 def get_geonames(**kwargs):
     """Get the geonames dataframe.
@@ -803,7 +908,8 @@ def get_geonames(**kwargs):
         df = df[kwargs["columns"]]
     else:
         df = df[
-            ["geonameid", "name", "country_code", "population", "latitude", "longitude"]
+            ["geonameid", "name", "country_code",
+                "population", "latitude", "longitude"]
         ]
 
     return df
