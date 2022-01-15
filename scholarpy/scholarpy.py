@@ -848,6 +848,60 @@ class Dsl(dimcli.Dsl):
             else:
                 return df, None
 
+    def org_grants_annual_stats(self, org_id, start_year=None, end_year=None, iterative=False, limit=100, return_plot=False, **kwargs):
+        """Search publications by organization ID.
+
+        Args:
+            org_id (str): The ID of the organization. For example, grid.411461.7
+            start_year (int, optional): The start year of the publication. Defaults to None.
+            end_year (int, optional): The end year of the publication. Defaults to None.
+            iterative (bool, optional): If True, the query will be iterative. Defaults to False.
+            limit (int, optional): The number of results to return. Defaults to 1000.
+            return_plot (bool, optional): If True, the plot of the results will be returned. Defaults to False.
+
+        Returns:
+            dimcli.DslDataset: JSON data of the results.
+        """
+
+        if (start_year is not None) and (end_year is not None):
+            # query = f'search grants where research_orgs="{org_id}" and start_year>={start_year} and end_date<="{end_year}-12-31" return start_year aggregate funding'
+            query = f'search grants where research_orgs="{org_id}" and start_year>={start_year} return start_year aggregate funding'
+        elif start_year is not None:
+            query = f'search grants where research_orgs="{org_id}" and start_year>={start_year} return start_year aggregate funding'
+        elif end_year is not None:
+            query = f'search grants where research_orgs="{org_id}" return start_year aggregate funding'
+        else:
+            query = f'search grants where research_orgs="{org_id}" return start_year aggregate funding'
+
+        # if limit is None and start_year is not None and end_year is not None:
+        #     limit = end_year - start_year + 1
+        # else:
+        #     limit = 30
+
+        if iterative:
+            result = self.query_iterative(query, limit=limit)
+        else:
+            query = f"{query} limit {limit}"
+            result = self.query(query)
+
+        df = result.as_dataframe()
+        df.rename(columns={"id": "year"}, inplace=True)
+
+        if not return_plot:
+            return df
+        else:
+            if not df.empty:
+                org_name = self.search_org_by_id(
+                    org_id).as_dataframe()["name"][0]
+                fig_count = px.bar(df, x="year", y="count",
+                                   title=f"The number of grants for {org_name} - by year")
+                fig_amount = px.bar(df, x="year", y="funding",
+                                    title=f"The funding amount for {org_name} - by year")
+
+                return df, fig_count, fig_amount
+            else:
+                return df, None, None
+
     def org_grant_funders(self, org_id, start_year=None, end_year=None, iterative=False, limit=20, return_plot=False, **kwargs):
         """Top funders of an organization.
 
@@ -891,6 +945,68 @@ class Dsl(dimcli.Dsl):
                 return df, fig
             else:
                 return df, None
+
+    def search_grants_by_org(self, org_id, start_year=None, end_year=None, iterative=False, limit=1000, **kwargs):
+        """Search grants by organization id.
+
+        Args:
+            org_id (str): The ID of the organization. For example, grid.411461.7
+            start_year (int, optional): The start year of the publication. Defaults to None.
+            end_year (int, optional): The end year of the publication. Defaults to None.
+            iterative (bool, optional): If True, the query will be iterative. Defaults to False.
+            limit (int, optional): The number of results to return. Defaults to 20.
+
+        Returns:
+            dimcli.DslDataset: JSON data of the results.
+        """
+
+        if (start_year is not None) and (end_year is not None):
+            query = f'search grants where research_orgs="{org_id}" and start_year>={start_year} return grants[basics+extras]'
+        elif start_year is not None:
+            query = f'search grants where research_orgs="{org_id}" and start_year>={start_year} return grants[basics+extras]'
+        elif end_year is not None:
+            query = f'search grants where research_orgs="{org_id}" and start_year<={end_year} return grants[basics+extras]'
+        else:
+            query = f'search grants where research_orgs="{org_id}" return grants[basics+extras]'
+
+        if iterative:
+            result = self.query_iterative(query, limit=limit)
+        else:
+            query = f"{query} limit {limit}"
+            result = self.query(query)
+
+        return result
+
+    def search_grants_by_researcher(self, researcher_id, start_year=None, end_year=None, iterative=False, limit=1000, **kwargs):
+        """Search grants by researcher id.
+
+        Args:
+            researcher_id (str): The ID of the research. For example, ur.01361677540.55
+            start_year (int, optional): The start year of the publication. Defaults to None.
+            end_year (int, optional): The end year of the publication. Defaults to None.
+            iterative (bool, optional): If True, the query will be iterative. Defaults to False.
+            limit (int, optional): The number of results to return. Defaults to 1000.
+
+        Returns:
+            dimcli.DslDataset: JSON data of the results.
+        """
+
+        if (start_year is not None) and (end_year is not None):
+            query = f'search grants where researchers="{researcher_id}" and start_year>={start_year} return grants[basics+extras]'
+        elif start_year is not None:
+            query = f'search grants where researchers="{researcher_id}" and start_year>={start_year} return grants[basics+extras]'
+        elif end_year is not None:
+            query = f'search grants where researchers="{researcher_id}" and start_year<={end_year} return grants[basics+extras]'
+        else:
+            query = f'search grants where researchers="{researcher_id}" return grants[basics+extras]'
+
+        if iterative:
+            result = self.query_iterative(query, limit=limit)
+        else:
+            query = f"{query} limit {limit}"
+            result = self.query(query)
+
+        return result
 
 
 def get_geonames(**kwargs):
