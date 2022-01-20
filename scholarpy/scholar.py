@@ -181,3 +181,22 @@ def author_citations_by_year(name=None, id=None, record=None, return_plot=False)
         fig = px.bar(df, x="year", y="citations",
                      title=f"Citations by year")
         return df, fig
+
+
+def get_author_coauthors(name=None, id=None, record=None, return_df=False):
+
+    if record is None and (name is not None or id is not None):
+        record = get_author_record(name=name, id=id)
+    elif record is not None:
+        pass
+    else:
+        raise ValueError("Either name or id must be specified.")
+
+    coauthors = record["coauthors"]
+
+    if not return_df:
+        return coauthors
+    else:
+        df = pd.DataFrame(coauthors)
+        df = df[["name", "scholar_id", "affiliation"]]
+        return df
