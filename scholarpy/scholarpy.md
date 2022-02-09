@@ -1,0 +1,4 @@
+ 
+# scholarpy module
+
+::: scholarpy.scholarpy
