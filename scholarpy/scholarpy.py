@@ -1008,6 +1008,62 @@ class Dsl(dimcli.Dsl):
 
         return result
 
+    def org_pubs_most_cited(self, org_id, recent=False, iterative=False, limit=100, **kwargs):
+
+        if recent:
+            query = f"""search publications where research_orgs.id="{org_id}"
+            return publications[basics+recent_citations]
+            sort by recent_citations"""
+        else:
+            query = f"""search publications where research_orgs.id="{org_id}"
+            return publications[basics+times_cited]
+            sort by times_cited"""
+
+        if iterative:
+            result = self.query_iterative(query, limit=limit)
+        else:
+            query = f"{query} limit {limit}"
+            result = self.query(query)
+
+        return result
+
+    def org_pubs_top_areas(self, org_id, iterative=False, limit=1000, return_plot=False, **kwargs):
+
+            query = f"""search publications where research_orgs.id="{org_id}"
+            return publications[doi+title+times_cited+category_for+journal]
+            sort by times_cited"""
+
+            if iterative:
+                result = self.query_iterative(query, limit=limit)
+            else:
+                query = f"{query} limit {limit}"
+                result = self.query(query)    
+
+            raw_df = result.as_dataframe()
+            dimcli.utils.normalize_key("category_for", result.publications, [])
+            df = pd.json_normalize(result.publications, record_path='category_for', meta=['doi', 'title', 'times_cited', ], errors='ignore' )
+            org_name = self.search_org_by_id(org_id).as_dataframe()["name"][0]
+            if return_plot:
+                area_fig = px.scatter(df,
+                    x="times_cited", y="name",
+                    marginal_x="histogram",
+                    marginal_y="histogram",
+                    hover_data=["doi", "title"],
+                    height=600,
+                    title=f"Publications from {org_name} - Research Areas vs. Citations")
+                # return df, area_fig
+                journal_fig = px.scatter(raw_df,
+                            x="times_cited", y="journal.title",
+                            marginal_x="histogram",
+                            marginal_y="histogram",
+                            height=600,
+                            title=f"Publications from {org_name} - Journals vs. Citations")
+                
+                return df, area_fig, journal_fig
+            else:
+                return df
+
+
 
 def get_geonames(**kwargs):
     """Get the geonames dataframe.
